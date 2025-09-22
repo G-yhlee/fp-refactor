@@ -67,18 +67,23 @@ const processInitialDeposit = (input: AccountCreationOutput): BankProcess =>
     RTE.map((env) => env.initialBalance + input.depositAmount)
   );
 
-// Step 3: Calculate Account Fees and Update Balance
-const calculateAccountFees = (currentBalance: number): BankProcess<DepositProcessingOutput> =>
+// Account Configuration Types
+type AccountConfig = {
+  accountFee: number;
+  interestRate: number;
+};
+
+// Step 3: Calculate Account Fees and Update Balance (Curried)
+const calculateAccountFees = (config: AccountConfig) => (currentBalance: number): BankProcess<DepositProcessingOutput> =>
   pipe(
     RTE.ask<BankEnv>(),
     RTE.map((env) => {
-      const accountFee = 50; // 계좌 관리 수수료
-      const finalBalance = currentBalance - accountFee;
+      const finalBalance = currentBalance - config.accountFee;
       return {
         accountNumber: `${env.bankCode}-ACCOUNT`,
         depositAmount: finalBalance,
         totalBalance: finalBalance,
-        interestRate: 0.02 // 2% 이자율
+        interestRate: config.interestRate
       };
     })
   );
@@ -91,18 +96,23 @@ const calculateMonthlyInterest: InterestCalculationProcess = pipe(
   )
 );
 
-const applyInterestBonus = (monthlyInterest: number): InterestCalculationProcess =>
+// Interest Bonus Configuration
+type InterestBonusConfig = {
+  bonusMultiplier: number;
+};
+
+const applyInterestBonus = (config: InterestBonusConfig) => (monthlyInterest: number): InterestCalculationProcess =>
   pipe(
-    RTE.of(monthlyInterest * 1.5) // 신규 고객 이자 보너스 50%
+    RTE.of(monthlyInterest * config.bonusMultiplier)
   );
 
-// Step 4: Calculate Final Interest - Main
-const calculateFinalInterest = (input: DepositProcessingOutput): BankProcess =>
+// Step 4: Calculate Final Interest - Main (Curried)
+const calculateFinalInterest = (bonusConfig: InterestBonusConfig) => (input: DepositProcessingOutput): BankProcess =>
   expandBankEnvironment(
     (env: BankEnv) => ({ ...env, ...input }),
     pipe(
       calculateMonthlyInterest, 
-      RTE.chain(applyInterestBonus)
+      RTE.chain(applyInterestBonus(bonusConfig))
     )
   );
 
@@ -113,15 +123,29 @@ const finalizeAccountBalance = (interest: number): BankProcess =>
     RTE.map((env) => env.initialBalance + interest)
   );
 
-// Main Banking Process Pipeline
-export const bankingProcessPipeline = (newAccount: NewAccountRequest): BankProcess =>
+// Configuration for the banking pipeline
+type BankingConfig = {
+  accountConfig: AccountConfig;
+  bonusConfig: InterestBonusConfig;
+};
+
+// Main Banking Process Pipeline (Curried)
+export const bankingProcessPipeline = (config: BankingConfig) => (newAccount: NewAccountRequest): BankProcess =>
   pipe(
     createNewAccount(newAccount),
     RTE.chain(processInitialDeposit),
-    RTE.chain(calculateAccountFees),
-    RTE.chain(calculateFinalInterest),
+    RTE.chain(calculateAccountFees(config.accountConfig)),
+    RTE.chain(calculateFinalInterest(config.bonusConfig)),
     RTE.chain(finalizeAccountBalance)
   );
 
 // Export types for testing
-export type { BankEnv, NewAccountRequest, AccountCreationOutput, DepositProcessingOutput };
+export type { 
+  BankEnv, 
+  NewAccountRequest, 
+  AccountCreationOutput, 
+  DepositProcessingOutput,
+  BankingConfig,
+  AccountConfig,
+  InterestBonusConfig
+};

@@ -1,35 +1,70 @@
 import * as E from 'fp-ts/Either';
-import { bankingProcessPipeline, BankEnv, NewAccountRequest } from './bank';
+import { 
+  bankingProcessPipeline, 
+  BankEnv, 
+  NewAccountRequest, 
+  BankingConfig,
+  AccountConfig,
+  InterestBonusConfig
+} from './bank';
 
 // 은행 업무 처리 파이프라인 테스트
 async function runBankingExample() {
   console.log('=== 은행 계좌 개설 및 처리 파이프라인 테스트 ===\n');
   
+  // 다양한 은행 설정들
+  const standardConfig: BankingConfig = {
+    accountConfig: { accountFee: 50, interestRate: 0.02 },
+    bonusConfig: { bonusMultiplier: 1.5 }
+  };
+  
+  const premiumConfig: BankingConfig = {
+    accountConfig: { accountFee: 30, interestRate: 0.025 },
+    bonusConfig: { bonusMultiplier: 2.0 }
+  };
+  
+  const basicConfig: BankingConfig = {
+    accountConfig: { accountFee: 100, interestRate: 0.015 },
+    bonusConfig: { bonusMultiplier: 1.2 }
+  };
+  
   // 테스트 케이스들
-  const testCases: { bankEnv: BankEnv; newAccount: NewAccountRequest }[] = [
+  const testCases: { 
+    bankEnv: BankEnv; 
+    newAccount: NewAccountRequest; 
+    config: BankingConfig;
+    configName: string;
+  }[] = [
     { 
       bankEnv: { initialBalance: 10000, customerName: '김철수', bankCode: 'KB' },
-      newAccount: { customerName: '김철수', initialDeposit: 1000, accountType: 'SAVINGS' }
+      newAccount: { customerName: '김철수', initialDeposit: 1000, accountType: 'SAVINGS' },
+      config: standardConfig,
+      configName: '일반 계좌'
     },
     { 
       bankEnv: { initialBalance: 50000, customerName: '이영희', bankCode: 'NH' },
-      newAccount: { customerName: '이영희', initialDeposit: 2000, accountType: 'CHECKING' }
+      newAccount: { customerName: '이영희', initialDeposit: 2000, accountType: 'CHECKING' },
+      config: premiumConfig,
+      configName: '프리미엄 계좌'
     },
     { 
       bankEnv: { initialBalance: 30000, customerName: '박민수', bankCode: 'SC' },
-      newAccount: { customerName: '박민수', initialDeposit: 1500, accountType: 'SAVINGS' }
+      newAccount: { customerName: '박민수', initialDeposit: 1500, accountType: 'SAVINGS' },
+      config: basicConfig,
+      configName: '기본 계좌'
     },
   ];
 
-  for (const { bankEnv, newAccount } of testCases) {
+  for (const { bankEnv, newAccount, config, configName } of testCases) {
     console.log(`\n고객: ${newAccount.customerName} (${bankEnv.bankCode}은행)`);
-    console.log(`계좌 타입: ${newAccount.accountType}`);
+    console.log(`계좌 타입: ${newAccount.accountType} - ${configName}`);
     console.log(`초기 잔액: ${bankEnv.initialBalance.toLocaleString()}원`);
     console.log(`초기 입금액: ${newAccount.initialDeposit.toLocaleString()}원`);
-    console.log('-------------------------------------------');
+    console.log(`수수료: ${config.accountConfig.accountFee}원, 이자율: ${(config.accountConfig.interestRate * 100)}%, 보너스: x${config.bonusConfig.bonusMultiplier}`);
+    console.log('-----------------------------------------------------------');
     
     // 은행 업무 파이프라인 실행
-    const result = await bankingProcessPipeline(newAccount)(bankEnv)();
+    const result = await bankingProcessPipeline(config)(newAccount)(bankEnv)();
     
     if (E.isRight(result)) {
       console.log(`✅ 최종 계좌 잔액: ${result.right.toLocaleString()}원`);
@@ -49,16 +84,17 @@ async function runBankingExample() {
       console.log(`  2. 입금 처리: ${bankEnv.initialBalance.toLocaleString()} + ${newAccount.initialDeposit.toLocaleString()} = ${balanceAfterDeposit.toLocaleString()}원`);
       
       // Step 3: 계좌 수수료 계산
-      const accountFee = 50;
+      const accountFee = config.accountConfig.accountFee;
       const balanceAfterFee = balanceAfterDeposit - accountFee;
       console.log(`  3. 계좌 관리 수수료: ${balanceAfterDeposit.toLocaleString()} - ${accountFee} = ${balanceAfterFee.toLocaleString()}원`);
       
       // Step 4: 이자 계산
-      const interestRate = 0.02;
+      const interestRate = config.accountConfig.interestRate;
+      const bonusMultiplier = config.bonusConfig.bonusMultiplier;
       const monthlyInterest = (balanceAfterFee * interestRate) / 12;
-      const bonusInterest = monthlyInterest * 1.5; // 신규 고객 보너스
+      const bonusInterest = monthlyInterest * bonusMultiplier;
       console.log(`  4a. 월 이자 계산: ${balanceAfterFee.toLocaleString()} × ${(interestRate * 100)}% ÷ 12 = ${monthlyInterest.toFixed(2)}원`);
-      console.log(`  4b. 신규 고객 보너스: ${monthlyInterest.toFixed(2)} × 1.5 = ${bonusInterest.toFixed(2)}원`);
+      console.log(`  4b. 보너스 적용: ${monthlyInterest.toFixed(2)} × ${bonusMultiplier} = ${bonusInterest.toFixed(2)}원`);
       
       // Step 5: 최종 잔액
       const finalBalance = bankEnv.initialBalance + bonusInterest;
