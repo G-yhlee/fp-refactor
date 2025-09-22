@@ -1,36 +1,35 @@
 import * as E from 'fp-ts/Either';
-import { bankingProcessPipeline, BankEnv } from './bank';
+import { bankingProcessPipeline, BankEnv, NewAccountRequest } from './bank';
 
 // 은행 업무 처리 파이프라인 테스트
 async function runBankingExample() {
   console.log('=== 은행 계좌 개설 및 처리 파이프라인 테스트 ===\n');
   
   // 테스트 케이스들
-  const testCases: BankEnv[] = [
+  const testCases: { bankEnv: BankEnv; newAccount: NewAccountRequest }[] = [
     { 
-      initialBalance: 10000, 
-      customerName: '김철수', 
-      bankCode: 'KB' 
+      bankEnv: { initialBalance: 10000, customerName: '김철수', bankCode: 'KB' },
+      newAccount: { customerName: '김철수', initialDeposit: 1000, accountType: 'SAVINGS' }
     },
     { 
-      initialBalance: 50000, 
-      customerName: '이영희', 
-      bankCode: 'NH' 
+      bankEnv: { initialBalance: 50000, customerName: '이영희', bankCode: 'NH' },
+      newAccount: { customerName: '이영희', initialDeposit: 2000, accountType: 'CHECKING' }
     },
     { 
-      initialBalance: 30000, 
-      customerName: '박민수', 
-      bankCode: 'SC' 
+      bankEnv: { initialBalance: 30000, customerName: '박민수', bankCode: 'SC' },
+      newAccount: { customerName: '박민수', initialDeposit: 1500, accountType: 'SAVINGS' }
     },
   ];
 
-  for (const bankEnv of testCases) {
-    console.log(`\n고객: ${bankEnv.customerName} (${bankEnv.bankCode}은행)`);
+  for (const { bankEnv, newAccount } of testCases) {
+    console.log(`\n고객: ${newAccount.customerName} (${bankEnv.bankCode}은행)`);
+    console.log(`계좌 타입: ${newAccount.accountType}`);
     console.log(`초기 잔액: ${bankEnv.initialBalance.toLocaleString()}원`);
-    console.log('-----------------------------------');
+    console.log(`초기 입금액: ${newAccount.initialDeposit.toLocaleString()}원`);
+    console.log('-------------------------------------------');
     
     // 은행 업무 파이프라인 실행
-    const result = await bankingProcessPipeline(bankEnv)();
+    const result = await bankingProcessPipeline(newAccount)(bankEnv)();
     
     if (E.isRight(result)) {
       console.log(`✅ 최종 계좌 잔액: ${result.right.toLocaleString()}원`);
@@ -40,14 +39,14 @@ async function runBankingExample() {
       
       // Step 1: 계좌 생성
       const accountNumber = `${bankEnv.bankCode}-${Date.now()}`;
-      const initialDeposit = 1000;
       console.log(`  1. 계좌 생성: ${accountNumber}`);
-      console.log(`     - 고객명: ${bankEnv.customerName}`);
-      console.log(`     - 초기 입금액: ${initialDeposit.toLocaleString()}원`);
+      console.log(`     - 고객명: ${newAccount.customerName}`);
+      console.log(`     - 계좌 타입: ${newAccount.accountType}`);
+      console.log(`     - 초기 입금액: ${newAccount.initialDeposit.toLocaleString()}원`);
       
       // Step 2: 초기 입금 처리
-      const balanceAfterDeposit = bankEnv.initialBalance + initialDeposit;
-      console.log(`  2. 입금 처리: ${bankEnv.initialBalance.toLocaleString()} + ${initialDeposit.toLocaleString()} = ${balanceAfterDeposit.toLocaleString()}원`);
+      const balanceAfterDeposit = bankEnv.initialBalance + newAccount.initialDeposit;
+      console.log(`  2. 입금 처리: ${bankEnv.initialBalance.toLocaleString()} + ${newAccount.initialDeposit.toLocaleString()} = ${balanceAfterDeposit.toLocaleString()}원`);
       
       // Step 3: 계좌 수수료 계산
       const accountFee = 50;

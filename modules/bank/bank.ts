@@ -11,11 +11,19 @@ type BankEnv = {
 type Process<TDep, TOutput> = RTE.ReaderTaskEither<TDep, Error, TOutput>;
 type BankProcess<TOutput = number> = Process<BankEnv, TOutput>;
 
+// Input Types for Pipeline
+type NewAccountRequest = {
+  customerName: string;
+  initialDeposit: number;
+  accountType: 'SAVINGS' | 'CHECKING';
+};
+
 // Step 1: Account Creation Types
 type AccountCreationOutput = { 
   accountNumber: string; 
   depositAmount: number;
   customerName: string;
+  accountType: string;
 };
 
 // Step 2: Deposit Processing Types
@@ -41,14 +49,16 @@ const expandBankEnvironment = <Dep1, Dep2, TOutput>(
   );
 
 // Step 1: Create New Account
-const createNewAccount: BankProcess<AccountCreationOutput> = pipe(
-  RTE.ask<BankEnv>(),
-  RTE.map((env) => ({ 
-    accountNumber: `${env.bankCode}-${Date.now()}`,
-    depositAmount: 1000, // 초기 입금액
-    customerName: env.customerName
-  }))
-);
+const createNewAccount = (newAccount: NewAccountRequest): BankProcess<AccountCreationOutput> => 
+  pipe(
+    RTE.ask<BankEnv>(),
+    RTE.map((env) => ({ 
+      accountNumber: `${env.bankCode}-${Date.now()}`,
+      depositAmount: newAccount.initialDeposit,
+      customerName: newAccount.customerName,
+      accountType: newAccount.accountType
+    }))
+  );
 
 // Step 2: Process Initial Deposit
 const processInitialDeposit = (input: AccountCreationOutput): BankProcess =>
@@ -104,13 +114,14 @@ const finalizeAccountBalance = (interest: number): BankProcess =>
   );
 
 // Main Banking Process Pipeline
-export const bankingProcessPipeline: BankProcess = pipe(
-  createNewAccount,
-  RTE.chain(processInitialDeposit),
-  RTE.chain(calculateAccountFees),
-  RTE.chain(calculateFinalInterest),
-  RTE.chain(finalizeAccountBalance)
-);
+export const bankingProcessPipeline = (newAccount: NewAccountRequest): BankProcess =>
+  pipe(
+    createNewAccount(newAccount),
+    RTE.chain(processInitialDeposit),
+    RTE.chain(calculateAccountFees),
+    RTE.chain(calculateFinalInterest),
+    RTE.chain(finalizeAccountBalance)
+  );
 
 // Export types for testing
-export type { BankEnv, AccountCreationOutput, DepositProcessingOutput };
+export type { BankEnv, NewAccountRequest, AccountCreationOutput, DepositProcessingOutput };
