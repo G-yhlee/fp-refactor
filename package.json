@@ -1,0 +1,28 @@
+{
+  "name": "fp-refactor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:origin": "npx ts-node modules/origin/origin-example.ts",
+    "dev:refactor": "npx ts-node modules/refactor/example.ts",
+    "dev:bank": "npx ts-node modules/bank/bank-example.ts",
+    "test:origin": "npx ts-node modules/origin/origin-example.ts",
+    "test:refactor": "npx ts-node modules/refactor/example.ts",
+    "test:bank": "npx ts-node modules/bank/bank-example.ts",
+    "test:all": "npm run test:origin && npm run test:refactor && npm run test:bank"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "fp-ts": "^2.16.11"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
