@@ -1,11 +1,7 @@
 import * as E from 'fp-ts/Either';
 import { 
   numberProcessPipeline, 
-  NumberProcessConfig,
-  InitialNumberRequest,
-  Step1Config,
-  Step2Config,
-  Step3Config
+  NumberProcessConfig
 } from './refactor';
 
 // 이 코드의 목적:
@@ -39,38 +35,33 @@ async function runExample() {
   // 테스트 환경 설정
   const testCases: { 
     env: { a: string };
-    request: InitialNumberRequest;
     config: NumberProcessConfig; 
     configName: string;
   }[] = [
     { 
       env: { a: '5' }, 
-      request: { startValue: 5, label: '테스트1' },
       config: defaultConfig, 
       configName: '기본 설정' 
     },
     { 
       env: { a: '10' }, 
-      request: { startValue: 10, label: '테스트2' },
       config: aggressiveConfig, 
       configName: '공격적 설정' 
     },
     { 
       env: { a: '3' }, 
-      request: { startValue: 3, label: '테스트3' },
       config: conservativeConfig, 
       configName: '보수적 설정' 
     },
   ];
 
-  for (const { env, request, config, configName } of testCases) {
+  for (const { env, config, configName } of testCases) {
     console.log(`\n테스트 케이스: a = "${env.a}" - ${configName}`);
-    console.log(`초기 요청: 시작값=${request.startValue}, 레이블="${request.label}"`);
     console.log(`설정: 초기값=${config.step1Config.initialNumber}, 추가값=${config.step2Config.additionalValue}, 배수=${config.step3Config.multiplier}`);
     console.log('--------------------------------------------------------------');
     
-    // 파이프라인 실행 (bankingProcessPipeline과 동일한 구조)
-    const result = await numberProcessPipeline(config)(request)(env)();
+    // 파이프라인 실행
+    const result = await numberProcessPipeline(config)(env)();
     
     if (E.isRight(result)) {
       console.log(`✅ 최종 결과: ${result.right}`);
@@ -79,12 +70,9 @@ async function runExample() {
       console.log('\n📝 계산 과정:');
       const a = Number(env.a);
       
-      // Step 0: 초기 요청
-      console.log(`  0. 초기 요청: 시작값=${request.startValue}, 레이블="${request.label}"`);
-      
-      // Step 1: addNewNumber (이제 request.startValue 포함)
-      const step1 = { new_a: env.a, new_nubmer: config.step1Config.initialNumber + request.startValue };
-      console.log(`  1. addNewNumber: { new_a: "${step1.new_a}", new_nubmer: ${config.step1Config.initialNumber} + ${request.startValue} = ${step1.new_nubmer} }`);
+      // Step 1: addNewNumber
+      const step1 = { new_a: env.a, new_nubmer: config.step1Config.initialNumber };
+      console.log(`  1. addNewNumber: { new_a: "${step1.new_a}", new_nubmer: ${step1.new_nubmer} }`);
       
       // Step 2: returnNumber
       const step2 = a + step1.new_nubmer;
@@ -103,9 +91,9 @@ async function runExample() {
       const sub1 = a + a + step3.new_number2;
       console.log(`  4a. returnNumber3SubProcess: ${a} + ${a} + ${step3.new_number2} = ${sub1}`);
       
-      // SubProcess2: 이전 결과에 배수 적용
-      const sub2 = sub1 * config.step3Config.multiplier;
-      console.log(`  4b. returnNumber3SubProcess2: ${sub1} × ${config.step3Config.multiplier} = ${sub2}`);
+      // SubProcess2: a + new_nubmer + input (origin.ts와 동일)
+      const sub2 = a + step3.new_nubmer + sub1;
+      console.log(`  4b. returnNumber3SubProcess2: ${a} + ${step3.new_nubmer} + ${sub1} = ${sub2}`);
       
       // Step 5: returnNumber4
       const step5 = a + sub2;
